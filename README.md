@@ -1,11 +1,13 @@
+﻿# Project ScamCheck
 
-  # ScamCheck
+Dự án ScamCheck - FPT Hackathon 2026.
 
-  This is a code bundle for ScamCheck. The original project is available at https://www.figma.com/design/wElogQNptKc8cx3nINfSaI/ScamCheck.
+ScamCheck giúp người dùng nhận diện dấu hiệu lừa đảo trực tuyến và đưa ra hướng xử lý an toàn.
 
-  ## Running the code
+## Running the code
 
-  Run `npm i` to install the dependencies.
+Run `npm install` to install dependencies.
 
-  Run `npm run dev` to start the development server.
-  
+Run `npm run dev` to start the Vite development server.
+
+For local API testing with Vercel functions, run `vercel dev` and configure `GEMINI_API_KEY` in `.env.local`.
