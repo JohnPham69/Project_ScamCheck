@@ -1,2 +1,2 @@
-# ScamCheck_Mobile
-ScamCheck Project - FPT Hackathon 2026
+# Project ScamCheck
+Dự án ScamCheck - FPT Hackathon 2026
