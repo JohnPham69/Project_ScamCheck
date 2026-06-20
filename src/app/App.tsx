@@ -64,6 +64,17 @@ const SAMPLES = [
 ];
 
 type Risk = "high" | "medium" | "low" | null;
+type AnalyzeErrorCode = "invalid_json" | "ai_error";
+
+class AnalyzeError extends Error {
+  code: AnalyzeErrorCode;
+
+  constructor(code: AnalyzeErrorCode, message: string) {
+    super(message);
+    this.name = "AnalyzeError";
+    this.code = code;
+  }
+}
 
 type Indicator = {
   quote: string;
@@ -460,11 +471,16 @@ export default function App() {
       body: JSON.stringify({ message: text }),
     });
 
+    const data = await response.json().catch(() => null);
+
     if (!response.ok) {
-      throw new Error("Không gọi được AI");
+      if (data?.error === "Gemini returned invalid JSON") {
+        throw new AnalyzeError("invalid_json", "Gemini chưa trả xong kết quả phân tích");
+      }
+
+      throw new AnalyzeError("ai_error", "Không gọi được AI");
     }
 
-    const data = await response.json();
 
     const riskMap: Record<string, Risk> = {
       "Nguy hiểm": "high",
@@ -533,13 +549,22 @@ export default function App() {
           ...prev.slice(0, 49),
         ]);
       }
-    } catch {
-      toast.error("Không thể kết nối AI", {
-        description: "Vui lòng thử lại sau.",
-        icon: <WifiOff size={16} />,
-        duration: 5000,
-        closeButton: true,
-      });
+    } catch (error) {
+      if (error instanceof AnalyzeError && error.code === "invalid_json") {
+        toast.error("Lỗi kết quả AI", {
+          description: "AI chưa trả được kết quả chuẩn, vui lòng thử lại sau.",
+          icon: <WifiOff size={16} />,
+          duration: 6000,
+          closeButton: true,
+        });
+      } else {
+        toast.error("Không thể kết nối tới máy chủ AI", {
+          description: "Vui lòng kiểm tra kết nối mạng và thử lại sau.",
+          icon: <WifiOff size={16} />,
+          duration: 5000,
+          closeButton: true,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -1021,6 +1046,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
