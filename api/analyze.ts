@@ -213,7 +213,8 @@ async function analyzeHandler(req: any, res: any) {
     return res.status(400).json({ error: "Missing message" });
   }
 
-  const urlReport = formatUrlReport(await analyzeUrls(message));
+  const urls = await analyzeUrls(message);
+  const urlReport = formatUrlReport(urls);
 
   const prompt = `
 Bạn là ScamCheck, công cụ giáo dục và chống lừa đảo online cho người lớn tuổi Việt Nam.
@@ -301,9 +302,15 @@ Cấu trúc JSON:
 
   try {
     try {
-      return res.status(200).json(normalizeAnalysis(JSON.parse(text)));
+      return res.status(200).json({
+        ...normalizeAnalysis(JSON.parse(text)),
+        urls,
+      });
     } catch {
-      return res.status(200).json(normalizeAnalysis(JSON.parse(extractJsonObject(text))));
+      return res.status(200).json({
+        ...normalizeAnalysis(JSON.parse(extractJsonObject(text))),
+        urls,
+      });
     }
   } catch (error) {
     console.error("Could not parse Gemini response", {
