@@ -1,5 +1,9 @@
 ﻿import { config } from "dotenv";
 
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
@@ -174,6 +178,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
 
 
 
