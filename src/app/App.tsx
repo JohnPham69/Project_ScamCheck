@@ -963,7 +963,12 @@ export default function App() {
                           {item.label}
                         </span>
                       </div>
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-between gap-2">
+                        {item.usedFallback ? (
+                          <span className="rounded-full border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 text-xs font-semibold text-yellow-800 dark:text-yellow-200">
+                            Dùng bộ phân tích dự phòng
+                          </span>
+                        ) : <span />}
                         <span className="text-xs text-gray-400 dark:text-gray-300">{formatTime(item.time)}</span>
                       </div>
                     </div>
@@ -1002,6 +1007,12 @@ export default function App() {
               </div>
 
               <div className="p-5 space-y-4">
+                {item.usedFallback && (
+                  <div className="rounded-xl border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed">
+                    Lần kiểm tra này sử dụng bộ phân tích dự phòng vì ScamCheck không kết nối được tới máy chủ AI.
+                  </div>
+                )}
+
                 {/* Original message */}
                 <div className="space-y-1.5">
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Nội dung tin nhắn gốc</p>
@@ -1083,6 +1094,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
