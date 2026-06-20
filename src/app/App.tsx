@@ -134,6 +134,22 @@ function isShortenedUrl(rawUrl: string) {
   const hostname = getUrlHostname(rawUrl);
   return URL_SHORTENER_DOMAINS.has(hostname);
 }
+
+function extractUrlsFromText(text: string) {
+  const urlPattern = /\b(?:(?:https?:\/\/|www\.)[^\s<>()"']+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|vn|com\.vn|edu\.vn|gov\.vn|info|biz|io|co|me|app|dev|cc|top|xyz|click|shop|live|site|online|vip|ly|gl|gd|id|at|to|link|page|cloud|store|website)\b(?:\/[^\s<>()"']*)?)/gi;
+  const trailingPunctuation = /[.,;:!?)]$/;
+  const seen = new Set<string>();
+
+  return Array.from(text.matchAll(urlPattern))
+    .map((match) => match[0].replace(trailingPunctuation, ""))
+    .filter((url) => {
+      const key = url.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return Boolean(getUrlHostname(url));
+    });
+}
+
 function isPublicSafetyWarning(text: string) {
   const normalized = normalizeVietnamese(text);
   const hasWarningContext = /\b(canh bao|khuyen cao|luu y|chieu tro|thu doan|lua dao|gia mao|chiem doat|tuyet doi khong|khong lam theo)\b/i.test(normalized);
@@ -173,7 +189,7 @@ function analyzeText(text: string): Analysis {
     score += points;
   };
 
-  const urls = text.match(/https?:\/\/[^\s]+|www\.[^\s]+/gi) ?? [];
+  const urls = extractUrlsFromText(text);
   for (const url of urls) {
     const shortenedUrl = isShortenedUrl(url);
     const suspiciousDomain = /\.(cc|top|xyz|click|info|shop|live|site|online|vip|net)\b/i.test(url);
@@ -1140,7 +1156,7 @@ export default function App() {
         )}
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-300">
-          ScamCheck · Bảo vệ gia đình bạn khỏi lừa đảo trực tuyến
+          ScamCheck · Bảo vệ bạn khỏi lừa đảo trực tuyến
         </p>
 
         {/* Legal notice */}
@@ -1151,6 +1167,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
