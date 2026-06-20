@@ -81,6 +81,13 @@ type Indicator = {
   reason: string;
 };
 
+type UrlAnalysis = {
+  original: string;
+  expanded: string;
+  isShortened: boolean;
+  resolved: boolean;
+};
+
 interface Analysis {
   risk: Risk;
   label: string;
@@ -160,7 +167,7 @@ function isPublicSafetyWarning(text: string) {
   return hasWarningContext && hasProtectiveInstruction && !hasDirectTrap && !hasPhoneNumber;
 }
 
-function analyzeText(text: string): Analysis {
+function analyzeText(text: string, resolvedUrls: UrlAnalysis[] = []): Analysis {
   if (!text.trim()) return { risk: null, label: "", highlights: [], indicators: [] };
 
   const normalized = normalizeVietnamese(text);
@@ -191,17 +198,23 @@ function analyzeText(text: string): Analysis {
 
   const urls = extractUrlsFromText(text);
   for (const url of urls) {
-    const shortenedUrl = isShortenedUrl(url);
-    const suspiciousDomain = /\.(cc|top|xyz|click|info|shop|live|site|online|vip|net)\b/i.test(url);
-    const typoBank = /vietcorn|vietcombank-login|bidv-?secure|techcombank-?verify|mbbank-?secure/i.test(url);
+    const resolvedInfo = resolvedUrls.find((item) => item.original.toLowerCase() === url.toLowerCase());
+    const expandedUrl = resolvedInfo?.expanded || url;
+    const expandedHost = getUrlHostname(expandedUrl);
+    const shortenedUrl = resolvedInfo?.isShortened ?? isShortenedUrl(url);
+    const resolvedShortUrl = shortenedUrl && resolvedInfo?.resolved;
+    const suspiciousDomain = /\.(cc|top|xyz|click|info|shop|live|site|online|vip|net)\b/i.test(expandedUrl);
+    const typoBank = /vietcorn|vietcombank-login|bidv-?secure|techcombank-?verify|mbbank-?secure/i.test(expandedUrl);
     addIndicator(
       url,
-      shortenedUrl
-        ? "Đường dẫn rút gọn che giấu địa chỉ thật. Với tin nhắn lạ, đây là dấu hiệu cần kiểm chứng trước khi bấm."
-        : suspiciousDomain || typoBank
-          ? "Đường dẫn dùng tên miền lạ hoặc gần giống thương hiệu thật, thường gặp trong lừa đảo giả mạo."
-          : "Tin nhắn có đường dẫn ngoài. Cần tự mở kênh chính thức để kiểm chứng, không bấm trực tiếp.",
-      shortenedUrl ? 28 : suspiciousDomain || typoBank ? 35 : 18,
+      resolvedShortUrl
+        ? `Đường dẫn rút gọn dẫn tới ${expandedHost || expandedUrl}. Dù là dịch vụ quen thuộc như Google Drive, bạn vẫn nên kiểm tra nguồn gửi và nội dung tệp trước khi mở.`
+        : shortenedUrl
+          ? "Đường dẫn rút gọn che giấu địa chỉ thật. Với tin nhắn lạ, đây là dấu hiệu cần kiểm chứng trước khi bấm."
+          : suspiciousDomain || typoBank
+            ? "Đường dẫn dùng tên miền lạ hoặc gần giống thương hiệu thật, thường gặp trong lừa đảo giả mạo."
+            : "Tin nhắn có đường dẫn ngoài. Cần tự mở kênh chính thức để kiểm chứng, không bấm trực tiếp.",
+      resolvedShortUrl ? 24 : shortenedUrl ? 28 : suspiciousDomain || typoBank ? 35 : 18,
     );
   }
 
@@ -554,6 +567,22 @@ export default function App() {
     try { localStorage.setItem("scamcheck-history", JSON.stringify(history)); } catch {}
   }, [history]);
 
+  async function resolveUrlsForFallback(text: string): Promise<UrlAnalysis[]> {
+    try {
+      const response = await fetch("/api/urls", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const data = await response.json().catch(() => null);
+      return Array.isArray(data?.urls) ? data.urls : [];
+    } catch {
+      return [];
+    }
+  }
   async function analyzeWithAI(text: string): Promise<Analysis> {
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -644,7 +673,8 @@ export default function App() {
         ]);
       }
     } catch (error) {
-      const fallbackResult = analyzeText(input);
+      const fallbackUrls = await resolveUrlsForFallback(input);
+      const fallbackResult = analyzeText(input, fallbackUrls);
       setAnalysis(fallbackResult);
 
       if (fallbackResult.risk) {
@@ -1167,6 +1197,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
