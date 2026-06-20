@@ -92,6 +92,7 @@ interface Analysis {
     manipulation?: string;
     advice?: string;
   } | null;
+  usedFallback?: boolean;
 }
 
 function normalizeVietnamese(text: string) {
@@ -171,6 +172,7 @@ function analyzeText(text: string): Analysis {
         ? "Bộ phân tích dự phòng thấy một số điểm cần kiểm chứng. Bạn chưa nên làm theo tin nhắn cho đến khi xác minh qua kênh chính thức."
         : "Bộ phân tích dự phòng chưa thấy dấu hiệu lừa đảo rõ ràng, nhưng bạn vẫn nên cẩn thận với mọi yêu cầu cung cấp thông tin cá nhân.",
     actions: getFallbackActions(risk),
+    usedFallback: true,
     psychology: risk === "low" ? null : {
       manipulation: risk === "high" ? "Tin nhắn có thể đang tạo sợ hãi hoặc áp lực gấp." : "Tin nhắn có thể khiến người nhận phân vân và mất cảnh giác.",
       advice: getFallbackPsychology(risk),
@@ -252,6 +254,7 @@ type HistoryItem = {
     manipulation?: string;
     advice?: string;
   } | null;
+  usedFallback?: boolean;
   time: Date;
 };
 
@@ -532,6 +535,7 @@ export default function App() {
       actions: Array.isArray(data.actions)
         ? data.actions.filter((action: unknown): action is string => typeof action === "string" && Boolean(action.trim()))
         : getFallbackActions(risk),
+      usedFallback: false,
       psychology: data.psychology && typeof data.psychology === "object"
         ? {
             manipulation: typeof data.psychology.manipulation === "string" ? data.psychology.manipulation : undefined,
@@ -564,6 +568,7 @@ export default function App() {
             detective: result.detective,
             actions: result.actions,
             psychology: result.psychology,
+            usedFallback: result.usedFallback,
             time: new Date(),
           },
           ...prev.slice(0, 49),
@@ -585,27 +590,13 @@ export default function App() {
             detective: fallbackResult.detective,
             actions: fallbackResult.actions,
             psychology: fallbackResult.psychology,
+            usedFallback: fallbackResult.usedFallback,
             time: new Date(),
           },
           ...prev.slice(0, 49),
         ]);
       }
 
-      if (error instanceof AnalyzeError && error.code === "invalid_json") {
-        toast.warning("Đang dùng bộ phân tích dự phòng", {
-          description: "AI chưa trả được kết quả chuẩn, nên ScamCheck đã phân tích bằng bộ quy tắc nội bộ.",
-          icon: <WifiOff size={16} />,
-          duration: 7000,
-          closeButton: true,
-        });
-      } else {
-        toast.warning("Đang dùng bộ phân tích dự phòng", {
-          description: "Không kết nối được máy chủ AI, nên ScamCheck đã phân tích bằng bộ quy tắc nội bộ.",
-          icon: <WifiOff size={16} />,
-          duration: 7000,
-          closeButton: true,
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -773,6 +764,11 @@ export default function App() {
             {/* Live result panel */}
             {cfg && input.trim() && (
               <div className="space-y-3">
+                {analysis.usedFallback && (
+                  <div className="rounded-xl border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed">
+                    Không kết nối được tới máy chủ AI, ScamCheck sẽ sử dụng bộ phân tích dự phòng.
+                  </div>
+                )}
                 <div className={`rounded-2xl border ${cfg.border} overflow-hidden shadow-sm`}>
                   <div className={`${cfg.bg} px-5 pt-4 pb-3 text-center border-b ${cfg.border}`}>
                     <p className={`text-xs font-bold uppercase tracking-widest ${cfg.text} mb-0.5`}>
@@ -1087,6 +1083,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
