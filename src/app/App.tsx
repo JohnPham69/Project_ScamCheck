@@ -94,69 +94,89 @@ interface Analysis {
   } | null;
 }
 
-function analyzeText(text: string): Analysis {
-  if (!text.trim()) return { risk: null, label: "", highlights: [] };
-  const lower = text.toLowerCase();
-
-  const highPatterns = [
-    /https?:\/\/\S+/gi,
-    /\bxac minh\b/gi,
-    /\bbao mat\b/gi,
-    /\bcong an\b/gi,
-    /\bbat giu\b/gi,
-    /\brua tien\b/gi,
-    /\bvietcom\S*/gi,
-    /\btrung thuong\b/gi,
-    /\btrung iPhone\b/gi,
-  ];
-
-  const mediumPatterns = [
-    /\bhuong dan\b/gi,
-    /\bchuyen tien\b/gi,
-    /\bnap tien\b/gi,
-    /\btai khoan\b/gi,
-  ];
-
-  const foundHighlights: string[] = [];
-
-  for (const p of highPatterns) {
-    const matches = text.match(p);
-    if (matches) matches.forEach((m) => foundHighlights.push(m));
-  }
-
-  if (
-    lower.includes("http") ||
-    lower.includes("xac minh") ||
-    lower.includes("bao mat tai khoan") ||
-    lower.includes("cong an") ||
-    lower.includes("bat giu") ||
-    lower.includes("rua tien") ||
-    lower.includes("trung iphone") ||
-    lower.includes("trung thuong") ||
-    lower.includes("phan thuong") ||
-    lower.includes("nhan qua")
-  ) {
-    return { risk: "high", label: "Nguy hiểm", highlights: [...new Set(foundHighlights)] };
-  }
-
-  for (const p of mediumPatterns) {
-    const matches = text.match(p);
-    if (matches) matches.forEach((m) => foundHighlights.push(m));
-  }
-
-  if (
-    lower.includes("chuyen tien") ||
-    lower.includes("nap tien") ||
-    lower.includes("tai khoan") ||
-    lower.includes("mat khau") ||
-    lower.includes("otp")
-  ) {
-    return { risk: "medium", label: "Nghi ngờ", highlights: [...new Set(foundHighlights)] };
-  }
-
-  return { risk: "low", label: "An toàn", highlights: [] };
+function normalizeVietnamese(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
 }
 
+function analyzeText(text: string): Analysis {
+  if (!text.trim()) return { risk: null, label: "", highlights: [], indicators: [] };
+
+  const normalized = normalizeVietnamese(text);
+  const indicators: Indicator[] = [];
+  let score = 0;
+
+  const addIndicator = (quote: string, reason: string, points: number) => {
+    const cleanQuote = quote.trim();
+    if (!cleanQuote) return;
+    const exists = indicators.some((item) => item.quote.toLowerCase() === cleanQuote.toLowerCase());
+    if (!exists) indicators.push({ quote: cleanQuote, reason });
+    score += points;
+  };
+
+  const urls = text.match(/https?:\/\/[^\s]+|www\.[^\s]+/gi) ?? [];
+  for (const url of urls) {
+    const suspiciousDomain = /\.(cc|top|xyz|click|info|shop|live|site|online|vip|net)\b/i.test(url);
+    const typoBank = /vietcorn|vietcombank-login|bidv-?secure|techcombank-?verify|mbbank-?secure/i.test(url);
+    addIndicator(
+      url,
+      suspiciousDomain || typoBank
+        ? "Đường dẫn dùng tên miền lạ hoặc gần giống thương hiệu thật, thường gặp trong lừa đảo giả mạo."
+        : "Tin nhắn có đường dẫn ngoài. Cần tự mở kênh chính thức để kiểm chứng, không bấm trực tiếp.",
+      suspiciousDomain || typoBank ? 35 : 18,
+    );
+  }
+
+  const checks: Array<{ pattern: RegExp; reason: string; points: number }> = [
+    { pattern: /\b(otp|ma otp|ma xac thuc|mat khau|password|pin)\b/i, reason: "Yêu cầu mã OTP, mật khẩu hoặc mã PIN là dấu hiệu rủi ro cao. Tổ chức thật không hỏi các thông tin này qua tin nhắn.", points: 35 },
+    { pattern: /\b(cccd|cmnd|can cuoc|so tai khoan|thong tin ca nhan)\b/i, reason: "Tin nhắn nhắm tới thông tin định danh hoặc tài khoản cá nhân, có thể dùng để chiếm đoạt danh tính.", points: 25 },
+    { pattern: /\b(chuyen tien|nap tien|phi xac minh|phi ho so|phi van chuyen|dong phi|rut het tien)\b/i, reason: "Có yêu cầu chuyển tiền hoặc đóng phí trước. Đây là thủ đoạn phổ biến trong lừa đảo trực tuyến.", points: 30 },
+    { pattern: /\b(cong an|bo cong an|co quan dieu tra|vien kiem sat|toa an|bat giam|bat giu|rua tien|ma tuy|hinh su)\b/i, reason: "Nội dung giả danh cơ quan pháp luật hoặc dùng cáo buộc hình sự để gây sợ hãi.", points: 28 },
+    { pattern: /\b(ngan hang|vietcombank|bidv|techcombank|mb bank|vpbank|agribank|tai khoan bi|dang nhap la|bao mat tai khoan)\b/i, reason: "Tin nhắn giả danh ngân hàng hoặc cảnh báo tài khoản để thúc ép người nhận xác minh gấp.", points: 22 },
+    { pattern: /\b(trung thuong|trung giai|nhan qua|phan thuong|iphone|xe sh|tri an khach hang)\b/i, reason: "Nội dung trúng thưởng/quà tặng bất ngờ thường được dùng để dụ nộp phí hoặc lấy thông tin cá nhân.", points: 24 },
+    { pattern: /\b(khan cap|ngay lap tuc|truoc 24h|sau 2 gio|60 phut|het han|neu khong|se bi khoa|se bi bat)\b/i, reason: "Tin nhắn tạo áp lực thời gian hoặc đe dọa hậu quả để người nhận hành động vội.", points: 20 },
+    { pattern: /\b(telegram|zalo|whatsapp|goi ngay|lien he ngay|091|092|093|094|096|097|098|099|03\d|05\d|07\d|08\d)\b/i, reason: "Tin nhắn kéo người dùng sang kênh liên hệ cá nhân hoặc số lạ thay vì kênh chính thức.", points: 14 },
+    { pattern: /\b(khong thong bao|khong ke cho ai|bao mat tuyet doi|o mot minh|khong cup may)\b/i, reason: "Yêu cầu giữ bí mật hoặc cô lập người nhận là thủ đoạn kiểm soát tâm lý thường gặp.", points: 25 },
+    { pattern: /\b(giao hang|don hang|shipper|thieu phi|hai quan|hoan tien)\b/i, reason: "Nội dung liên quan giao hàng/phí phát sinh/hoàn tiền có thể là giả mạo đơn vị vận chuyển.", points: 16 },
+  ];
+
+  for (const check of checks) {
+    const match = normalized.match(check.pattern);
+    if (match?.[0]) {
+      const originalMatch = text.slice(match.index ?? 0, (match.index ?? 0) + match[0].length);
+      addIndicator(originalMatch, check.reason, check.points);
+    }
+  }
+
+  if (urls.length > 0 && indicators.some((item) => /otp|mat khau|password|pin|tai khoan|xac minh/i.test(normalizeVietnamese(item.quote + " " + item.reason)))) {
+    score += 18;
+  }
+
+  const risk: Exclude<Risk, null> = score >= 55 ? "high" : score >= 25 ? "medium" : "low";
+  const label = risk === "high" ? "Nguy hiểm" : risk === "medium" ? "Nghi ngờ" : "An toàn";
+  const highlights = indicators.map((item) => item.quote).filter(Boolean);
+
+  return {
+    risk,
+    label,
+    highlights,
+    indicators,
+    detective: risk === "high"
+      ? "Bộ phân tích dự phòng phát hiện nhiều dấu hiệu rủi ro trong tin nhắn này, đặc biệt là yêu cầu hành động gấp, giả danh hoặc dẫn tới kênh không chính thức."
+      : risk === "medium"
+        ? "Bộ phân tích dự phòng thấy một số điểm cần kiểm chứng. Bạn chưa nên làm theo tin nhắn cho đến khi xác minh qua kênh chính thức."
+        : "Bộ phân tích dự phòng chưa thấy dấu hiệu lừa đảo rõ ràng, nhưng bạn vẫn nên cẩn thận với mọi yêu cầu cung cấp thông tin cá nhân.",
+    actions: getFallbackActions(risk),
+    psychology: risk === "low" ? null : {
+      manipulation: risk === "high" ? "Tin nhắn có thể đang tạo sợ hãi hoặc áp lực gấp." : "Tin nhắn có thể khiến người nhận phân vân và mất cảnh giác.",
+      advice: getFallbackPsychology(risk),
+    },
+  };
+}
 function highlightText(text: string, highlights: string[]) {
   if (!highlights.length) return <span>{text}</span>;
 
@@ -550,18 +570,39 @@ export default function App() {
         ]);
       }
     } catch (error) {
+      const fallbackResult = analyzeText(input);
+      setAnalysis(fallbackResult);
+
+      if (fallbackResult.risk) {
+        setHistory((prev) => [
+          {
+            id: Date.now().toString(),
+            text: input,
+            risk: fallbackResult.risk,
+            label: fallbackResult.label,
+            highlights: fallbackResult.highlights,
+            indicators: fallbackResult.indicators,
+            detective: fallbackResult.detective,
+            actions: fallbackResult.actions,
+            psychology: fallbackResult.psychology,
+            time: new Date(),
+          },
+          ...prev.slice(0, 49),
+        ]);
+      }
+
       if (error instanceof AnalyzeError && error.code === "invalid_json") {
-        toast.error("Lỗi kết quả AI", {
-          description: "AI chưa trả được kết quả chuẩn, vui lòng thử lại sau.",
+        toast.warning("Đang dùng bộ phân tích dự phòng", {
+          description: "AI chưa trả được kết quả chuẩn, nên ScamCheck đã phân tích bằng bộ quy tắc nội bộ.",
           icon: <WifiOff size={16} />,
-          duration: 6000,
+          duration: 7000,
           closeButton: true,
         });
       } else {
-        toast.error("Không thể kết nối tới máy chủ AI", {
-          description: "Vui lòng kiểm tra kết nối mạng và thử lại sau.",
+        toast.warning("Đang dùng bộ phân tích dự phòng", {
+          description: "Không kết nối được máy chủ AI, nên ScamCheck đã phân tích bằng bộ quy tắc nội bộ.",
           icon: <WifiOff size={16} />,
-          duration: 5000,
+          duration: 7000,
           closeButton: true,
         });
       }
@@ -1046,6 +1087,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
