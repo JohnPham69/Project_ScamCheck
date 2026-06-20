@@ -280,11 +280,7 @@ function getFallbackActions(risk: Risk) {
       "Hoi them nguoi than hoac nguoi tin cay truoc khi hanh dong.",
     ];
   }
-  return [
-    "Tin nhan co ve binh thuong, nhung van nen kiem tra neu co yeu cau tien bac.",
-    "Khong chia se ma OTP, mat khau hoac thong tin ca nhan.",
-    "Chi truy cap website chinh thuc bang cach tu nhap dia chi.",
-  ];
+  return [];
 }
 
 function getFallbackPsychology(risk: Risk) {
@@ -810,16 +806,18 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Hành động cần làm</p>
-                      <ul className="space-y-1">
-                        {actionItems.map((action, i) => (
-                          <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex gap-2">
-                            <span className="text-blue-500 font-bold shrink-0">-</span>{action}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {actionItems.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Hành động cần làm</p>
+                        <ul className="space-y-1">
+                          {actionItems.map((action, i) => (
+                            <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex gap-2">
+                              <span className="text-blue-500 font-bold shrink-0">-</span>{action}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1047,16 +1045,18 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Hành động cần làm</p>
-                      <ul className="space-y-1">
-                        {itemActionItems.map((action, i) => (
-                          <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex gap-2">
-                            <span className="text-blue-500 font-bold shrink-0">-</span>{action}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {itemActionItems.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Hành động cần làm</p>
+                        <ul className="space-y-1">
+                          {itemActionItems.map((action, i) => (
+                            <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex gap-2">
+                              <span className="text-blue-500 font-bold shrink-0">-</span>{action}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1094,6 +1094,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 

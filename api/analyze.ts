@@ -93,7 +93,7 @@ Yêu cầu bắt buộc:
 - Ví dụ nguy hiểm: "Viettel tang 50%, truy cap http://myviettel-khuyenmai.cc de dang nhap nhan thuong" => risk "Nguy hiểm".
 - detective là lời của nhân vật "Thám tử phân tích": 1 đoạn tối đa 80 chữ, đi thẳng vào bằng chứng chính.
 - indicators là tối đa 5 dấu hiệu nghi ngờ. quote phải là đoạn có thật trong tin nhắn. Nếu risk là "An toàn", indicators là mảng rỗng.
-- actions là tối đa 4 việc nên làm, mỗi việc tối đa 40 chữ, cụ thể và an toàn.
+- actions là tối đa 4 việc nên làm, mỗi việc tối đa 40 chữ, cụ thể và an toàn. Chỉ đưa actions khi có rủi ro lừa đảo hoặc có bước an toàn thật sự quan trọng. Nếu risk là "An toàn" và không có việc phòng tránh lừa đảo cần làm, actions phải là mảng rỗng []. Không đưa lời khuyên đời sống không liên quan đến lừa đảo.
 - psychology là lời của nhân vật "Cô tâm lý": nếu có rủi ro, manipulation ngắn gọn và advice có thể dài tối đa 100 chữ, trấn an người dùng, không làm họ xấu hổ. Nếu risk là "An toàn", psychology là null.
 - Chỉ trả về đúng một JSON object hợp lệ bắt đầu bằng { và kết thúc bằng }. Không markdown, không code fence, không giải thích ngoài JSON.
 
@@ -183,6 +183,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
 
 
 
