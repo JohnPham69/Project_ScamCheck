@@ -55,6 +55,8 @@ const SITUATION_SCRIPTS: Record<Exclude<Situation, "nothing" | null>, { title: s
   },
 };
 
+const MAX_MESSAGE_LENGTH = 5000;
+
 const SAMPLES = [
   { label: "🏦 Giả mạo Ngân hàng", text: "[VIETCOMBANK] Tai khoan cua ban dang bi dang nhap la tai thiet bi khac. Neu khong phai ban vui long truy cap vao link http://vietcornbank-login.cc de xac minh danh tinh va bao mat tai khoan ngay lap tuc!" },
   { label: "👮 Giả mạo Công an", text: "Day la Co quan Cong an. Ban co lien quan den vu an rua tien. Goi ngay so 0912345678 de tranh bi bat giu va chiu trach nhiem hinh su." },
@@ -667,13 +669,20 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <div className="flex items-end justify-between gap-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Kiểm tra tin nhắn lừa đảo bằng cách dán nội dung tin nhắn dưới đây:</p>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{input.length}/{MAX_MESSAGE_LENGTH}</span>
+                </div>
               <textarea
                 value={input}
-                onChange={(e) => { setInput(e.target.value); setAnalysis({ risk: null, label: "", highlights: [] }); setSituation(null); }}
+                onChange={(e) => { setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH)); setAnalysis({ risk: null, label: "", highlights: [] }); setSituation(null); }}
+                maxLength={MAX_MESSAGE_LENGTH}
                 placeholder="Dán hoặc gõ nội dung tin nhắn nghi ngờ vào đây..."
                 rows={5}
-                className="w-full resize-y rounded-xl border border-gray-200 dark:border-gray-600 bg-[#f8f9ff] dark:bg-gray-900 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] transition min-h-[120px] lg:min-h-[200px]"
+                className="w-full resize-y rounded-xl border border-gray-200 dark:border-gray-600 bg-[#f8f9ff] dark:bg-gray-900 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] transition min-h-[120px] lg:min-h-[140px]"
               />
+              </div>
 
               <button
                 onClick={handleCheck}
@@ -1012,6 +1021,9 @@ export default function App() {
     </div>
   );
 }
+
+
+
 
 
 
