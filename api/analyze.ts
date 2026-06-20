@@ -86,6 +86,11 @@ Yêu cầu bắt buộc:
 - Trả lời bằng tiếng Việt rõ ràng, dễ hiểu cho người từ 40 tuổi trở lên.
 - Không bịa thông tin ngoài nội dung tin nhắn.
 - risk chỉ được là một trong ba giá trị: "An toàn", "Nghi ngờ", "Nguy hiểm".
+- Không đánh giá "Nghi ngờ" chỉ vì tin nhắn có khuyến mãi, tài khoản, nạp tiền, ưu đãi, hoặc thời hạn "hôm nay".
+- Nếu tin nhắn chỉ thông báo ưu đãi và hướng người dùng xem trong app chính thức/website chính thức đã biết, không có link lạ, số điện thoại cá nhân, Zalo/Telegram, OTP, mật khẩu, CCCD, phí trước, hoặc chuyển tiền ngoài kênh chính thức, hãy ưu tiên "An toàn".
+- Đánh giá "Nghi ngờ" hoặc "Nguy hiểm" khi có bằng chứng rõ như link/domain lạ, yêu cầu đăng nhập ngoài app chính thức, gửi OTP/mật khẩu/CCCD, chuyển tiền/đóng phí, liên hệ số cá nhân/Zalo/Telegram, đe dọa khóa tài khoản, hoặc tạo áp lực bất thường.
+- Ví dụ an toàn: "Viettel thong bao: Tai khoan cua ban duoc tang 50% gia tri the nap khi nap tien qua ung dung MyViettel duy nhat trong ngay hom nay. Chi tiet xem tai app MyViettel." => risk "An toàn", indicators [].
+- Ví dụ nguy hiểm: "Viettel tang 50%, truy cap http://myviettel-khuyenmai.cc de dang nhap nhan thuong" => risk "Nguy hiểm".
 - detective là lời của nhân vật "Thám tử phân tích": 1 đoạn tối đa 80 chữ, đi thẳng vào bằng chứng chính.
 - indicators là tối đa 5 dấu hiệu nghi ngờ. quote phải là đoạn có thật trong tin nhắn. Nếu risk là "An toàn", indicators là mảng rỗng.
 - actions là tối đa 4 việc nên làm, mỗi việc tối đa 40 chữ, cụ thể và an toàn.
@@ -178,6 +183,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
 
 
 
