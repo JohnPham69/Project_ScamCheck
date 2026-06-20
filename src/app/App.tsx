@@ -63,10 +63,16 @@ const SAMPLES = [
 
 type Risk = "high" | "medium" | "low" | null;
 
+type Indicator = {
+  quote: string;
+  reason: string;
+};
+
 interface Analysis {
   risk: Risk;
   label: string;
   highlights: string[];
+  indicators?: Indicator[];
   detective?: string;
   actions?: string[];
   psychology?: {
@@ -206,6 +212,7 @@ type HistoryItem = {
   risk: "high" | "medium" | "low";
   label: string;
   highlights: string[];
+  indicators?: Indicator[];
   detective?: string;
   actions?: string[];
   psychology?: {
@@ -473,6 +480,14 @@ export default function App() {
             .map((item: { quote?: string }) => item.quote)
             .filter((quote): quote is string => Boolean(quote))
         : [],
+      indicators: Array.isArray(data.indicators)
+        ? data.indicators
+            .filter((item: { quote?: string; reason?: string }) => Boolean(item.quote))
+            .map((item: { quote?: string; reason?: string }) => ({
+              quote: item.quote ?? "",
+              reason: item.reason ?? "",
+            }))
+        : [],
       detective: typeof data.detective === "string" && data.detective.trim()
         ? data.detective.trim()
         : getFallbackDetective(risk),
@@ -507,6 +522,7 @@ export default function App() {
             risk: result.risk,
             label: result.label,
             highlights: result.highlights,
+            indicators: result.indicators,
             detective: result.detective,
             actions: result.actions,
             psychology: result.psychology,
@@ -706,13 +722,19 @@ export default function App() {
                   <div className="px-5 py-4 space-y-3">
                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{detectiveText}</p>
                     {analysis.highlights.length > 0 && (
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Điểm đánh dấu nghi ngờ</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {analysis.highlights.map((h, i) => (
-                            <span key={i} className="text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-700 rounded px-2 py-0.5 font-mono">
-                              {h}
-                            </span>
+                        <div className="space-y-2">
+                          {(analysis.indicators?.length
+                            ? analysis.indicators
+                            : analysis.highlights.map((quote) => ({ quote, reason: "" }))
+                          ).map((indicator, i) => (
+                            <div key={i} className="rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 space-y-1">
+                              <p className="text-xs text-yellow-800 dark:text-yellow-300 font-mono">{indicator.quote}</p>
+                              {indicator.reason && (
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{indicator.reason}</p>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -926,11 +948,19 @@ export default function App() {
                   <div className="px-4 py-3 space-y-3">
                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{itemDetectiveText}</p>
                     {item.highlights.length > 0 && (
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Điểm đánh dấu nghi ngờ</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {item.highlights.map((h, i) => (
-                            <span key={i} className="text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-700 rounded px-2 py-0.5 font-mono">{h}</span>
+                        <div className="space-y-2">
+                          {(item.indicators?.length
+                            ? item.indicators
+                            : item.highlights.map((quote) => ({ quote, reason: "" }))
+                          ).map((indicator, i) => (
+                            <div key={i} className="rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 space-y-1">
+                              <p className="text-xs text-yellow-800 dark:text-yellow-300 font-mono">{indicator.quote}</p>
+                              {indicator.reason && (
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{indicator.reason}</p>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -982,6 +1012,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
