@@ -55,7 +55,7 @@ const SITUATION_SCRIPTS: Record<Exclude<Situation, "nothing" | null>, { title: s
   },
 };
 
-const MAX_MESSAGE_LENGTH = 5000;
+const MAX_MESSAGE_LENGTH = 4000;
 
 const SAMPLES = [
   { label: "🏦 Giả mạo Ngân hàng", text: "[VIETCOMBANK] Tai khoan cua ban dang bi dang nhap la tai thiet bi khac. Neu khong phai ban vui long truy cap vao link http://vietcornbank-login.cc de xac minh danh tinh va bao mat tai khoan ngay lap tuc!" },
@@ -1094,6 +1094,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
