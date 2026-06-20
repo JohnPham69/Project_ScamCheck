@@ -59,6 +59,137 @@ function normalizeAnalysis(data: GeminiAnalysis) {
       : null,
   };
 }
+const URL_SHORTENER_DOMAINS = new Set([
+  "bit.ly",
+  "tinyurl.com",
+  "t.co",
+  "goo.gl",
+  "ow.ly",
+  "is.gd",
+  "buff.ly",
+  "cutt.ly",
+  "s.id",
+  "rebrand.ly",
+  "shorturl.at",
+  "tiny.cc",
+  "rb.gy",
+  "lnkd.in",
+]);
+
+type UrlAnalysis = {
+  original: string;
+  expanded: string;
+  isShortened: boolean;
+  resolved: boolean;
+};
+
+function getUrlHostname(rawUrl: string) {
+  try {
+    const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    return new URL(normalizedUrl).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeUrlForFetch(rawUrl: string) {
+  return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+}
+
+function isShortenedUrl(rawUrl: string) {
+  const hostname = getUrlHostname(rawUrl);
+  return URL_SHORTENER_DOMAINS.has(hostname);
+}
+
+function extractUrlsFromText(text: string) {
+  const urlPattern = /\b(?:(?:https?:\/\/|www\.)[^\s<>()"']+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com\.vn|edu\.vn|gov\.vn|com|net|org|vn|info|biz|io|co|me|app|dev|cc|top|xyz|click|shop|live|site|online|vip|ly|gl|gd|id|at|to|link|page|cloud|store|website)\b(?:\/[^\s<>()"']*)?)/gi;
+  const trailingPunctuation = /[.,;:!?)]$/;
+  const seen = new Set<string>();
+
+  return Array.from(text.matchAll(urlPattern))
+    .map((match) => match[0].replace(trailingPunctuation, ""))
+    .filter((url) => {
+      const key = url.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return Boolean(getUrlHostname(url));
+    });
+}
+
+function isBlockedRedirectHost(rawUrl: string) {
+  try {
+    const hostname = new URL(normalizeUrlForFetch(rawUrl)).hostname.toLowerCase();
+    return hostname === "localhost"
+      || hostname === "127.0.0.1"
+      || hostname === "0.0.0.0"
+      || hostname === "::1"
+      || /^10\./.test(hostname)
+      || /^192\.168\./.test(hostname)
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+      || /^169\.254\./.test(hostname);
+  } catch {
+    return true;
+  }
+}
+
+async function unshortenUrl(rawUrl: string): Promise<string> {
+  let currentUrl = normalizeUrlForFetch(rawUrl);
+
+  for (let i = 0; i < 5; i += 1) {
+    if (isBlockedRedirectHost(currentUrl)) return rawUrl;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const response = await fetch(currentUrl, {
+        method: "HEAD",
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 ScamCheck/1.0",
+        },
+      });
+
+      const location = response.headers.get("location");
+      if (!location) return currentUrl;
+
+      currentUrl = new URL(location, currentUrl).toString();
+    } catch {
+      return rawUrl;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return currentUrl;
+}
+
+async function analyzeUrls(message: string): Promise<UrlAnalysis[]> {
+  const urls = extractUrlsFromText(message).slice(0, 6);
+
+  return Promise.all(urls.map(async (url) => {
+    const isShortened = isShortenedUrl(url);
+    const expanded = isShortened ? await unshortenUrl(url) : url;
+
+    return {
+      original: url,
+      expanded,
+      isShortened,
+      resolved: isShortened && expanded !== url,
+    };
+  }));
+}
+
+function formatUrlReport(urls: UrlAnalysis[]) {
+  if (!urls.length) return "Không phát hiện đường dẫn.";
+
+  return urls.map((item) => {
+    if (!item.isShortened) return `- ${item.original}`;
+    if (!item.resolved) return `- ${item.original} -> không mở rộng được trong thời gian cho phép`;
+    return `- ${item.original} -> ${item.expanded}`;
+  }).join("\n");
+}
 
 async function analyzeHandler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -75,11 +206,16 @@ async function analyzeHandler(req: any, res: any) {
     return res.status(400).json({ error: "Missing message" });
   }
 
+  const urlReport = formatUrlReport(await analyzeUrls(message));
+
   const prompt = `
 Bạn là ScamCheck, công cụ giáo dục và chống lừa đảo online cho người lớn tuổi Việt Nam.
 
 Hãy phân tích tin nhắn sau:
 """${message}"""
+
+Các đường dẫn được ScamCheck tách từ tin nhắn:
+${urlReport}
 
 Yêu cầu bắt buộc:
 - Xưng hô bằng "bạn", "tôi"
@@ -89,7 +225,7 @@ Yêu cầu bắt buộc:
 - Không đánh giá "Nghi ngờ" chỉ vì tin nhắn có khuyến mãi, tài khoản, nạp tiền, ưu đãi, hoặc thời hạn "hôm nay".
 - Nếu tin nhắn chỉ thông báo ưu đãi và hướng người dùng xem trong app chính thức/website chính thức đã biết, không có link lạ, số điện thoại cá nhân, Zalo/Telegram, OTP, mật khẩu, CCCD, phí trước, hoặc chuyển tiền ngoài kênh chính thức, hãy ưu tiên "An toàn".
 - Nếu nội dung là cảnh báo/phòng tránh lừa đảo, có các cụm như "cảnh báo", "khuyến cáo", "chiêu trò", "tuyệt đối không", "không làm theo", và không yêu cầu người đọc bấm link, gọi số lạ, cung cấp thông tin, đăng nhập hoặc chuyển tiền, hãy đánh giá "An toàn". Đây là nội dung giáo dục, không phải tin lừa đảo.
-- Đánh giá "Nghi ngờ" hoặc "Nguy hiểm" khi có bằng chứng rõ như link/domain lạ, link rút gọn (bit.ly, tinyurl, t.co, goo.gl, is.gd, cutt.ly, rebrand.ly,...), yêu cầu đăng nhập ngoài app chính thức, gửi OTP/mật khẩu/CCCD, chuyển tiền/đóng phí, liên hệ số cá nhân/Zalo/Telegram, đe dọa khóa tài khoản, hoặc tạo áp lực bất thường. Link rút gọn không tự động là "Nguy hiểm", nhưng là dấu hiệu che giấu đích đến; nếu đi kèm nhận thưởng, xác minh tài khoản, đăng nhập, chuyển tiền hoặc thời hạn gấp thì ít nhất phải là "Nghi ngờ".
+- Đánh giá "Nghi ngờ" hoặc "Nguy hiểm" khi có bằng chứng rõ như link/domain lạ, link rút gọn (bit.ly, tinyurl, t.co, goo.gl, is.gd, cutt.ly, rebrand.ly,...), yêu cầu đăng nhập ngoài app chính thức, gửi OTP/mật khẩu/CCCD, chuyển tiền/đóng phí, liên hệ số cá nhân/Zalo/Telegram, đe dọa khóa tài khoản, hoặc tạo áp lực bất thường. Khi phần "Các đường dẫn" có dạng "link rút gọn -> link sau khi mở rộng", hãy phân tích domain sau khi mở rộng. Nếu không mở rộng được link rút gọn, coi đó là dấu hiệu che giấu đích đến; nếu đi kèm nhận thưởng, xác minh tài khoản, đăng nhập, chuyển tiền hoặc thời hạn gấp thì ít nhất phải là "Nghi ngờ".
 - Ví dụ an toàn: "Viettel thong bao: Tai khoan cua ban duoc tang 50% gia tri the nap khi nap tien qua ung dung MyViettel duy nhat trong ngay hom nay. Chi tiet xem tai app MyViettel." => risk "An toàn", indicators [].
 - Ví dụ an toàn: "[BO CONG AN] CANH BAO: Hien nay co chieu tro gia mao cong an goi dien thong bao phat nguoi hoac doa bat giam lien quan den rua tien nham yeu cau nguoi dan chuyen tien vao tai khoan ca nhan de chiem doat. Tuyet doi khong lam theo!" => risk "An toàn", indicators [].
 - Ví dụ nguy hiểm: "Viettel tang 50%, truy cap http://myviettel-khuyenmai.cc de dang nhap nhan thuong" => risk "Nguy hiểm".
@@ -185,6 +321,9 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
+
+
 
 
 
