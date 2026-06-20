@@ -104,10 +104,64 @@ function normalizeVietnamese(text: string) {
     .toLowerCase();
 }
 
+const URL_SHORTENER_DOMAINS = new Set([
+  "bit.ly",
+  "tinyurl.com",
+  "t.co",
+  "goo.gl",
+  "ow.ly",
+  "is.gd",
+  "buff.ly",
+  "cutt.ly",
+  "s.id",
+  "rebrand.ly",
+  "shorturl.at",
+  "tiny.cc",
+  "rb.gy",
+  "lnkd.in",
+]);
+
+function getUrlHostname(rawUrl: string) {
+  try {
+    const normalizedUrl = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
+    return new URL(normalizedUrl).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isShortenedUrl(rawUrl: string) {
+  const hostname = getUrlHostname(rawUrl);
+  return URL_SHORTENER_DOMAINS.has(hostname);
+}
+function isPublicSafetyWarning(text: string) {
+  const normalized = normalizeVietnamese(text);
+  const hasWarningContext = /\b(canh bao|khuyen cao|luu y|chieu tro|thu doan|lua dao|gia mao|chiem doat|tuyet doi khong|khong lam theo)\b/i.test(normalized);
+  const hasProtectiveInstruction = /\b(tuyet doi khong|khong lam theo|khong chuyen tien|khong cung cap|canh giac|phong tranh|tranh bi)\b/i.test(normalized);
+  const hasDirectTrap = /https?:\/\/|www\.|\b(truy cap|bam vao|nhan vao|dang nhap|xac minh tai|lien he ngay|goi ngay so|zalo|telegram|gui otp|doc ma otp)\b/i.test(normalized);
+  const hasPhoneNumber = /\b(0\d{9,10}|\+84\d{9,10})\b/.test(normalized);
+
+  return hasWarningContext && hasProtectiveInstruction && !hasDirectTrap && !hasPhoneNumber;
+}
+
 function analyzeText(text: string): Analysis {
   if (!text.trim()) return { risk: null, label: "", highlights: [], indicators: [] };
 
   const normalized = normalizeVietnamese(text);
+
+  if (isPublicSafetyWarning(text)) {
+    return {
+      risk: "low",
+      label: "An toàn",
+      highlights: [],
+      indicators: [],
+      detective: "Bộ phân tích dự phòng nhận thấy đây là nội dung cảnh báo/phòng tránh lừa đảo, không phải tin nhắn đang dụ bạn cung cấp thông tin hay chuyển tiền.",
+      actions: [],
+      usedFallback: true,
+      psychology: null,
+    };
+  }
+
   const indicators: Indicator[] = [];
   let score = 0;
 
@@ -121,14 +175,17 @@ function analyzeText(text: string): Analysis {
 
   const urls = text.match(/https?:\/\/[^\s]+|www\.[^\s]+/gi) ?? [];
   for (const url of urls) {
+    const shortenedUrl = isShortenedUrl(url);
     const suspiciousDomain = /\.(cc|top|xyz|click|info|shop|live|site|online|vip|net)\b/i.test(url);
     const typoBank = /vietcorn|vietcombank-login|bidv-?secure|techcombank-?verify|mbbank-?secure/i.test(url);
     addIndicator(
       url,
-      suspiciousDomain || typoBank
-        ? "Đường dẫn dùng tên miền lạ hoặc gần giống thương hiệu thật, thường gặp trong lừa đảo giả mạo."
-        : "Tin nhắn có đường dẫn ngoài. Cần tự mở kênh chính thức để kiểm chứng, không bấm trực tiếp.",
-      suspiciousDomain || typoBank ? 35 : 18,
+      shortenedUrl
+        ? "Đường dẫn rút gọn che giấu địa chỉ thật. Với tin nhắn lạ, đây là dấu hiệu cần kiểm chứng trước khi bấm."
+        : suspiciousDomain || typoBank
+          ? "Đường dẫn dùng tên miền lạ hoặc gần giống thương hiệu thật, thường gặp trong lừa đảo giả mạo."
+          : "Tin nhắn có đường dẫn ngoài. Cần tự mở kênh chính thức để kiểm chứng, không bấm trực tiếp.",
+      shortenedUrl ? 28 : suspiciousDomain || typoBank ? 35 : 18,
     );
   }
 
@@ -1094,6 +1151,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 

@@ -88,8 +88,10 @@ Yêu cầu bắt buộc:
 - risk chỉ được là một trong ba giá trị: "An toàn", "Nghi ngờ", "Nguy hiểm".
 - Không đánh giá "Nghi ngờ" chỉ vì tin nhắn có khuyến mãi, tài khoản, nạp tiền, ưu đãi, hoặc thời hạn "hôm nay".
 - Nếu tin nhắn chỉ thông báo ưu đãi và hướng người dùng xem trong app chính thức/website chính thức đã biết, không có link lạ, số điện thoại cá nhân, Zalo/Telegram, OTP, mật khẩu, CCCD, phí trước, hoặc chuyển tiền ngoài kênh chính thức, hãy ưu tiên "An toàn".
-- Đánh giá "Nghi ngờ" hoặc "Nguy hiểm" khi có bằng chứng rõ như link/domain lạ, yêu cầu đăng nhập ngoài app chính thức, gửi OTP/mật khẩu/CCCD, chuyển tiền/đóng phí, liên hệ số cá nhân/Zalo/Telegram, đe dọa khóa tài khoản, hoặc tạo áp lực bất thường.
+- Nếu nội dung là cảnh báo/phòng tránh lừa đảo, có các cụm như "cảnh báo", "khuyến cáo", "chiêu trò", "tuyệt đối không", "không làm theo", và không yêu cầu người đọc bấm link, gọi số lạ, cung cấp thông tin, đăng nhập hoặc chuyển tiền, hãy đánh giá "An toàn". Đây là nội dung giáo dục, không phải tin lừa đảo.
+- Đánh giá "Nghi ngờ" hoặc "Nguy hiểm" khi có bằng chứng rõ như link/domain lạ, link rút gọn (bit.ly, tinyurl, t.co, goo.gl, is.gd, cutt.ly, rebrand.ly,...), yêu cầu đăng nhập ngoài app chính thức, gửi OTP/mật khẩu/CCCD, chuyển tiền/đóng phí, liên hệ số cá nhân/Zalo/Telegram, đe dọa khóa tài khoản, hoặc tạo áp lực bất thường. Link rút gọn không tự động là "Nguy hiểm", nhưng là dấu hiệu che giấu đích đến; nếu đi kèm nhận thưởng, xác minh tài khoản, đăng nhập, chuyển tiền hoặc thời hạn gấp thì ít nhất phải là "Nghi ngờ".
 - Ví dụ an toàn: "Viettel thong bao: Tai khoan cua ban duoc tang 50% gia tri the nap khi nap tien qua ung dung MyViettel duy nhat trong ngay hom nay. Chi tiet xem tai app MyViettel." => risk "An toàn", indicators [].
+- Ví dụ an toàn: "[BO CONG AN] CANH BAO: Hien nay co chieu tro gia mao cong an goi dien thong bao phat nguoi hoac doa bat giam lien quan den rua tien nham yeu cau nguoi dan chuyen tien vao tai khoan ca nhan de chiem doat. Tuyet doi khong lam theo!" => risk "An toàn", indicators [].
 - Ví dụ nguy hiểm: "Viettel tang 50%, truy cap http://myviettel-khuyenmai.cc de dang nhap nhan thuong" => risk "Nguy hiểm".
 - detective là lời của nhân vật "Thám tử phân tích": 1 đoạn tối đa 80 chữ, đi thẳng vào bằng chứng chính.
 - indicators là tối đa 5 dấu hiệu nghi ngờ. quote phải là đoạn có thật trong tin nhắn. Nếu risk là "An toàn", indicators là mảng rỗng.
@@ -183,6 +185,8 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
+
 
 
 
