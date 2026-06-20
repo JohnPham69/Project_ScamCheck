@@ -332,9 +332,9 @@ function getFallbackActions(risk: Risk) {
   }
   if (risk === "medium") {
     return [
-      "Xac minh danh tinh nguoi gui qua kenh chinh thuc.",
-      "Khong chuyen tien hoac cung cap thong tin khi con nghi ngo.",
-      "Hoi them nguoi than hoac nguoi tin cay truoc khi hanh dong.",
+      "Xác minh danh tính người gửi qua kênh chính thức.",
+      "Không chuyển tiền hoặc cung cấp thông tin khi còn nghi ngờ.",
+      "Hỏi thêm người thân hoặc người tin cậy trước khi hành động.",
     ];
   }
   return [];
